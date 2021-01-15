@@ -33,8 +33,8 @@ Pgm = Table(env("DB_PRIOGRID_VIEW","pgm_test"),meta,autoload_with=engine)
 
 def retrieve(start_date,end_date,columns=[]):
     startmid,endmid = (cast_date_to_mid(d) for d in (start_date,end_date))
-
     table_columns = [getattr(Pgm.columns,c) for c in ID_COLUMNS]
+
     for c in columns:
         try:
             table_columns.append(getattr(Pgm.columns,c))
