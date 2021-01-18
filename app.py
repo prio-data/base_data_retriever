@@ -27,7 +27,8 @@ DEFAULT_END_DATE = env.date("DEFAULT_END_DATE","2020-01-01")
 app = fastapi.FastAPI()
 
 def hyperlink(request,path,name):
-    return os.path.join(request.url.hostname,path,name)+"/"
+    base = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}"
+    return os.path.join(base,path,name)+"/"
 def sanitize(q):
     return re.sub("[^a-zA_Z0-9_]","",q)
 
@@ -61,8 +62,8 @@ def wrapping_var(var:str,
 
 # INTROSPECTION ===========================================
 
-@app.get("/table/{table_name}/{column_name}/")
-def column_detail(request:Request,table_name: str,column_name: str):
+@app.get("/table/{table_name}/{column_name}/summary")
+def column_summary(request:Request,table_name: str,column_name: str):
     with closing(Session()) as sess:
         safe_column_name,safe_table_name = (sanitize(q) for q in (column_name,table_name))
         try:
@@ -85,6 +86,23 @@ def column_detail(request:Request,table_name: str,column_name: str):
         "min":column_min,
         "max":column_max,
         "count":value_count
+    }
+
+@app.get("/table/{table_name}/{column_name}/")
+def column_detail(request:Request,table_name: str,column_name: str):
+    with closing(Session()) as sess:
+        res = sess.execute("""
+            SELECT 1 FROM information_schema.columns
+                WHERE column_name=:column_name
+                AND table_name=:table_name
+        """,{"table_name":table_name,"column_name":column_name}).fetchone()
+    if res is None:
+        return Response(status_code=404)
+    else:
+        tablelink = hyperlink(request,"table",table_name)
+        return {
+            "table": tablelink,
+            "summary": os.path.join(tablelink,column_name,"summary")
     }
 
 @app.get("/table/{name}/")
@@ -126,7 +144,8 @@ def table_list(request:Request):
     serialized = []
     for table_name,*_ in tables:
         serialized.append({
-            "table":hyperlink(request,"table",table_name)
+            "table":hyperlink(request,"table",table_name),
+            "table_name":table_name
         })
     
     return {"data": serialized}
