@@ -2,8 +2,11 @@ import os
 
 from contextlib import closing
 
-from sqlalchemy import create_engine,MetaData,Table
+from fastapi import Response
+
+from sqlalchemy import create_engine,MetaData,Table,inspect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 from psycopg2 import connect
 
 from calls import cast_date_to_mid
@@ -25,24 +28,12 @@ connection_string = f"""
 def getconn():
     return connect(connection_string)
 
-meta = MetaData()
 engine = create_engine("postgresql+psycopg2://",creator=getconn)
+
+staging_meta = MetaData(schema=env("STAGING_SCHEMA"))
+uoa_meta = MetaData(schema=env("UOA_SCHEMA"))
+
+Base = declarative_base()
+
+inspector = inspect(engine)
 Session = sessionmaker(bind=engine)
-
-Pgm = Table(env("DB_PRIOGRID_VIEW","pgm_test"),meta,autoload_with=engine)
-
-def retrieve(start_date,end_date,columns=[]):
-    startmid,endmid = (cast_date_to_mid(d) for d in (start_date,end_date))
-    table_columns = [getattr(Pgm.columns,c) for c in ID_COLUMNS]
-
-    for c in columns:
-        try:
-            table_columns.append(getattr(Pgm.columns,c))
-        except AttributeError:
-            return Response(status_code=400)
-
-    with closing(Session()) as sess:
-        res = (sess.query(*table_columns)
-                .filter(Pgm.columns.month_id >= startmid,Pgm.columns.month_id <= endmid)
-            )
-    return res
