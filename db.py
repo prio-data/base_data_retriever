@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from psycopg2 import connect
 
-from calls import cast_date_to_mid
+# from calls import cast_date_to_mid
 from env import env
 
 ID_COLUMNS = ["gid","month_id"]
