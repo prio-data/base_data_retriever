@@ -29,10 +29,6 @@ def getconn():
     return connect(connection_string)
 
 engine = create_engine("postgresql+psycopg2://",creator=getconn)
-
-staging_meta = MetaData(schema=env("STAGING_SCHEMA"))
-uoa_meta = MetaData(schema=env("UOA_SCHEMA"))
-
 Base = declarative_base()
 
 inspector = inspect(engine)
