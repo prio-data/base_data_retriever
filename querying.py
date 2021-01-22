@@ -114,12 +114,6 @@ def json_query(loa:str,query:Query):
     they want. Then, I think it's just a matter of reversing the digraph to
     figure out which aggregations to make and then applying the proper grouping
     constructs.
-
-    Which filtering Q-params are valid depend on which variables are included.
-    If one, for instance, includes country.name in the query, one could also
-    supply a ?country=name&country=name to only include the specified names.
-
-    Fix Q params...?
     """
 
     tables = reflect_uoa_base_tables()
