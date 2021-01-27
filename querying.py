@@ -24,13 +24,13 @@ inspector = sa.inspect(engine)
 
 LOAS = {
     "priogrid_month":{
-        "required_columns":[
+        "index_columns":[
                 "month.id",
                 "priogrid.gid",
             ]
         },
     "country_month":{
-        "required_columns":[
+        "index_columns":[
                 "month.id",
                 "country.id"
             ]
@@ -121,7 +121,7 @@ def json_query(loa:str,query:Query):
     network = join_network(list(tables.values())) 
 
     try:
-        required_columns = LOAS[loa]["required_columns"]
+        required_columns = [*LOAS[loa]["index_columns"]]
         base_table = tables[loa]
     except KeyError:
         return Response(f"LOA {loa} not found",status_code=404)
@@ -199,6 +199,9 @@ def json_query(loa:str,query:Query):
             q = q.filter(tables["country"].c.id.in_(query.countries))
 
         data = pd.DataFrame(q.all())
+
+    icols = [c.replace(".","_") for c in LOAS[loa]["index_columns"]]
+    data = data.set_index(icols)
 
     # serialization
     fake_file = io.BytesIO()
