@@ -1,3 +1,4 @@
+import io
 from contextlib import closing
 
 from typing import Optional,Tuple,List
@@ -200,8 +201,9 @@ def json_query(loa:str,query:Query):
         data = pd.DataFrame(q.all())
 
     # serialization
-
-    return Response(data.to_csv(index=False))
+    fake_file = io.BytesIO()
+    data.to_parquet(fake_file,compression="gzip")
+    return Response(fake_file.getvalue(),media_type="application/octet-stream")
 
 def variable_query(r:Request,loa:str,var:str):
     """
