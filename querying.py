@@ -214,4 +214,4 @@ def variable_query(r:Request,loa:str,var:str):
     except pydantic.ValidationError:
         return Response("Specify the variable as {table}.{variable}",status_code=404)
 
-    return json_query(r=r,loa=loa,query=query,**r.query_params)
+    return json_query(loa=loa,query=query,**r.query_params)
