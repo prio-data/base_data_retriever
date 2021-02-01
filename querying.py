@@ -1,3 +1,8 @@
+"""
+This function is a mess, really needs a round of refactoring
+
+But it's MVP time!
+"""
 import io
 from contextlib import closing
 
@@ -200,6 +205,16 @@ def json_query(loa:str,query:Query):
 
         data = pd.DataFrame(q.all())
 
+    if data.shape == (0,0):
+        return Response("No data found; bad time range?",status_code=404)
+
+    icols = [c.replace(".","_") for c in LOAS[loa]["index_columns"]]
+
+    missingIndices = set(icols).difference(set(data.columns))
+    if missingIndices:
+        return Response(f"Index columns not found in data, missing {str(missingIndices)}",
+            status_code=500)
+
     icols = [c.replace(".","_") for c in LOAS[loa]["index_columns"]]
     data = data.set_index(icols)
 
@@ -208,14 +223,13 @@ def json_query(loa:str,query:Query):
     data.to_parquet(fake_file,compression="gzip")
     return Response(fake_file.getvalue(),media_type="application/octet-stream")
 
-def variable_query(r:Request,loa:str,var:str):
+def variable_query(r:Request,loa:str,var:str,year:int):
     """
     Query for a single variable.
     Basically just a curried version of the above function.
     """
-
     try:
-        query = Query(columns=[var])
+        query = Query(columns=[var],start_date=f"{year}-01-01",end_date=f"{year}-12-31")
     except pydantic.ValidationError:
         return Response("Specify the variable as {table}.{variable}",status_code=404)
 

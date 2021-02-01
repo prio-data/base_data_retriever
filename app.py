@@ -11,5 +11,5 @@ import querying
 
 app = fastapi.FastAPI()
 
-app.post("/{loa}/")(querying.json_query)
-app.get("/{loa}/{var}/")(querying.variable_query)
+#app.post("/{loa}/")(querying.json_query)
+app.get("/{loa}/{var}/{year}/")(querying.variable_query)
