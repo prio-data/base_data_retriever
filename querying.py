@@ -189,10 +189,10 @@ def json_query(loa:str,query:Query):
             end_date = date.fromisoformat("1981-01-01")
 
             if query.start_date is not None:
-                startmid = cast_date_to_mid(start_date)
+                startmid = cast_date_to_mid(query.start_date)
                 q = q.filter(tables["month"].c.id >= startmid)
             if query.end_date is not None:
-                endmid = cast_date_to_mid(end_date)
+                endmid = cast_date_to_mid(query.end_date)
                 q = q.filter(tables["month"].c.id <= endmid)
 
         if "country.id" in columns and query.countries is not None: #Filterable by country
