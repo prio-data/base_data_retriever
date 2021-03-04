@@ -1,0 +1,10 @@
+*.py[cod]
+__pycache__/
+venv/
+certs/
+secrets/
+.mypy_cache/
+.vim/
+trash/
+queries/
+local.env
