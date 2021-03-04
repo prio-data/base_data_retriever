@@ -3,6 +3,7 @@ This function is a mess, really needs a round of refactoring
 
 But it's MVP time!
 """
+import logging
 import io
 from contextlib import closing
 
@@ -21,10 +22,9 @@ import pandas as pd
 
 from calls import cast_date_to_mid
 from db import engine,Session
-from env import env
+import settings
 
-
-staging_meta = sa.MetaData(schema="staging")
+staging_meta = sa.MetaData(schema=settings.DB_SCHEMA)
 inspector = sa.inspect(engine)
 
 LOAS = {
@@ -48,9 +48,12 @@ def reflect_uoa_base_tables():
     Costly!
     """
 
-    names = inspector.get_table_names(schema=env("STAGING_SCHEMA")) 
+    logging.error("Reflecting base tables")
+
+    names = inspector.get_table_names(schema=settings.DB_SCHEMA) 
     tables = {} 
     for n in names:
+        logging.error(f"Reflected table {n}")
         tables[n] = (sa.Table(n,staging_meta,autoload_with=engine))
     return tables
 
@@ -61,12 +64,15 @@ def join_network(tables:List[sa.Table])->nx.DiGraph:
     perform a join when retrieving data from this collection of tables.
     """
     g = nx.DiGraph()
+    logging.error("Inferring join network")
     
     def get_fk_tables(fk):
         return [tbl for tbl in tables if fk.references(tbl)]
 
     for table in tables:
+        logging.error(f"Reflecting for {table}")
         for fk in table.foreign_keys:
+            logging.error(f"Reflecting for {table}-{fk}")
             try:
                 ref_table = get_fk_tables(fk)[-1]
             except IndexError:
@@ -121,6 +127,8 @@ def json_query(loa:str,query:Query):
     figure out which aggregations to make and then applying the proper grouping
     constructs.
     """
+
+    logging.error("Gathering join info")
 
     tables = reflect_uoa_base_tables()
     network = join_network(list(tables.values())) 
