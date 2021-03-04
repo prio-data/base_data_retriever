@@ -5,5 +5,4 @@ venv/
 .mypy_cache/
 
 .env
-trash/
-queries/
+secrets/
