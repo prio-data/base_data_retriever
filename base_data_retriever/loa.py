@@ -6,18 +6,18 @@ Might eventually be replaced by API calls to a service that manages these.
 LOAS = {
     "priogrid_month":{
         "index_columns":[
-                "month.id",
+                "year.year",
+                "month.month",
                 "priogrid.gid",
             ],
-        "grouping_column": "priogrid.gid"
     },
     "country_month":{
         "index_columns":[
-                "month.id",
+                "year.year",
+                "month.month",
                 "country.gwcode",
                 "country.name",
             ],
-        "grouping_column": "country.gwcode"
     },
 }
 

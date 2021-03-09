@@ -117,7 +117,7 @@ class QueryPlannerTest(unittest.TestCase):
 
         selects = [stmt for stmt in mock_query.statements if stmt.type == "select"]
         selected = {stmt.args[0].name for stmt in selects}
-        self.assertEqual(selected,{"pk","value"})
+        self.assertEqual(selected,{"two_pk","one_value"})
 
         self.assertEqual(
                 [stmt for stmt in mock_query.statements if stmt.type == "join"][0].args[0].name,
