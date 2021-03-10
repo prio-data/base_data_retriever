@@ -16,7 +16,6 @@ LOAS = {
                 "year.year",
                 "month.month",
                 "country.gwcode",
-                "country.name",
             ],
     },
 }
