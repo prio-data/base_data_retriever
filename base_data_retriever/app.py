@@ -6,12 +6,14 @@ from contextlib import closing
 import fastapi
 import querying 
 import logging
+
+import pandas as pd
+
 from query_planning import compose_join, join_network, query_with_ops
 from db import Session
 from loa import index_columns
 from metadata import get_reflected_metadata
 from exceptions import QueryError,ConfigError
-import pandas as pd
 
 app = fastapi.FastAPI()
 
@@ -35,6 +37,10 @@ def get_variable_value(loa: str, var: str, year: int, agg: str):
             return fastapi.Response(str(ce),status_code=500)
         query = query.filter(year_table.c.year == year)
         bytes_buffer = io.BytesIO()
-        pd.DataFrame(query.all()).to_parquet(bytes_buffer)
+
+        dataframe = pd.DataFrame(query.all())
+        dataframe = dataframe.set_index(["_".join((tbl,col)) for tbl,col in index_columns(loa)])
+        dataframe.to_parquet(bytes_buffer)
+
         return fastapi.Response(bytes_buffer.getvalue(),media_type="application/octet-stream")
 
