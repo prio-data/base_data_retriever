@@ -6,7 +6,7 @@ import requests
 import settings
 
 def cast_date_to_mid(date:date)->int:
-    r = requests.get(os.path.join(settings.TIMECASTER_URL,"vmid",str(date)))
+    r = requests.get(os.path.join(settings.TIME_CASTER_URL,"vmid",str(date)))
     if r.status_code == 200:
         return int(r.content)
     else:
