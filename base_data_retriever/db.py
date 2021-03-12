@@ -8,6 +8,9 @@ import settings
 def getconn():
     return secure_connect_ac(settings.APP_CONFIG_CONNECTION_STRING)
 
-engine = create_engine("postgresql+psycopg2://",creator=getconn)
+engine = create_engine("postgresql+psycopg2://",
+        creator=getconn,
+        pool_pre_ping=True)
+        
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
