@@ -21,7 +21,7 @@ app = fastapi.FastAPI()
 
 #app.get("/{loa}/{var}/{year}/")(querying.variable_query)
 
-@app.get("/{loa}/{var}/{year}/{agg}/")
+@app.get("/{loa}/{var}/{agg}/{year}/")
 def get_variable_value(loa: str, var: str, year: int, agg: str):
     metadata = get_reflected_metadata()
 
