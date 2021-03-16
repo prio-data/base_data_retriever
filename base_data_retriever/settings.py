@@ -6,13 +6,27 @@ from azure.appconfiguration import AzureAppConfigurationClient
 env = Env()
 env.read_env()
 
-APP_CONFIG_CONNECTION_STRING = (SecretClient(env.str("KEY_VAULT_URL"),DefaultAzureCredential())
-    .get_secret("app-settings-connection-string")
-    .value
-    )
+# = = = = = = = = = = = = = = = = = = = = =
+# SECRETS = = = = = = = = = = = = = = = = =
+# = = = = = = = = = = = = = = = = = = = = =
 
-app_config_client = AzureAppConfigurationClient.from_connection_string(APP_CONFIG_CONNECTION_STRING)
+secret_client = SecretClient(env.str("KEY_VAULT_URL"),DefaultAzureCredential())
+get_secret = lambda k: secret_client.get_secret(k).value
 
-TIME_CASTER_URL = app_config_client.get_configuration_setting("time-caster-url").value
+DB_USER = get_secret("db-user")
+DB_PASSWORD = get_secret("db-password")
 
-DB_SCHEMA = app_config_client.get_configuration_setting("base-data-retriever-schema").value
+# = = = = = = = = = = = = = = = = = = = = =
+# CONFIG= = = = = = = = = = = = = = = = = =
+# = = = = = = = = = = = = = = = = = = = = =
+
+app_config_client = AzureAppConfigurationClient.from_connection_string(
+            get_secret("app-settings-connection-string")
+        )
+
+get_config = lambda k: app_config_client.get_configuration_setting(k).value
+
+TIME_CASTER_URL = get_config("time-caster-url")
+DB_NAME = get_config("base-db-name")
+DB_SCHEMA = get_config("base-data-schema")
+DB_HOST = get_config("db-host")

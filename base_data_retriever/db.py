@@ -2,15 +2,15 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from postgres_azure_certificate_auth import secure_connect_ac
 import settings
 
-def getconn():
-    return secure_connect_ac(settings.APP_CONFIG_CONNECTION_STRING)
+def connection_string(host,user,password,dbname):
+    return f"postgresql+psycopg2://{user}:{password}@{host}/{dbname}?sslmode=require"
 
-engine = create_engine("postgresql+psycopg2://",
-        creator=getconn,
-        pool_pre_ping=True)
+engine = create_engine(connection_string(
+        user = settings.DB_USER,password=settings.DB_PASSWORD,
+        host = settings.DB_HOST,dbname=settings.DB_NAME
+    ))
         
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
