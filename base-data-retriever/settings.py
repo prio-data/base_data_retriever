@@ -31,3 +31,5 @@ TIME_CASTER_URL = get_config("time-caster-url")
 DB_NAME = get_config("base-db-name")
 DB_SCHEMA = get_config("base-data-schema")
 DB_HOST = get_config("db-host")
+
+CACHE_DIR = env.str("CACHE_DIR","bdr-cache")
