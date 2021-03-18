@@ -33,3 +33,5 @@ DB_SCHEMA = get_config("base-data-schema")
 DB_HOST = get_config("db-host")
 
 CACHE_DIR = env.str("CACHE_DIR","bdr-cache")
+
+LOG_LEVEL = get_config("log-level")
