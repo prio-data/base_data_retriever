@@ -33,13 +33,15 @@ def get_variable_value(loa: str, var: str, agg: str):
 
         bytes_buffer = io.BytesIO()
 
-        dataframe = pd.DataFrame(query.all())
+        dataframe = pd.read_sql_query(query.statement,sess.connection())
+
         try:
-            dataframe = dataframe.set_index(["_".join((tbl,col)) for tbl,col in index_columns(loa)])
+            loa_indices = ["_".join((tbl,col)) for tbl,col in index_columns(loa)]
+            dataframe.set_index(loa_indices,inplace=True)
         except KeyError:
             return fastapi.Response("Couldn't set index. "
-                    f"Columns needed: {index_columns(loa)}, "
-                    f"Current columns: {dataframe.columns}",
+                    f"Columns needed: {loa_indices}, "
+                    f"Current data: {dataframe}",
                     status_code=500
                 )
         dataframe.to_parquet(bytes_buffer)
