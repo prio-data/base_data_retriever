@@ -46,6 +46,8 @@ def get_variable_value(loa: str, var: str, agg: str):
 
         bytes_buffer = io.BytesIO()
 
+        logger.debug("Executing %s",str(query))
+
         logger.info("Fetching data")
         dataframe = pd.read_sql_query(query.statement,sess.connection())
         logger.info("Got %s rows",str(dataframe.shape[0]))
@@ -57,5 +59,9 @@ def get_variable_value(loa: str, var: str, agg: str):
             missing_idx = set(loa_indices).difference(dataframe.columns)
             logger.error("Missing index columns: %s",", ".join(missing_idx))
             return fastapi.Response("Couldn't set index.", status_code=500)
+    
+        logger.debug("Sorting dataframe")
+        dataframe.sort_index(inplace=True)
+
         dataframe.to_parquet(bytes_buffer)
         return fastapi.Response(bytes_buffer.getvalue(),media_type="application/octet-stream")
