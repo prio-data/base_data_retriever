@@ -10,7 +10,7 @@ RUN pip install -r requirements.txt
 
 RUN mkdir /certs
 
-COPY --from=fetch-cert /root.crt /.postgresql/root.crt
+COPY --from=fetch-cert /root.crt /root/.postgresql/root.crt
 
 COPY ./base-data-retriever/* /base-data-retriever/
 WORKDIR /base-data-retriever
