@@ -12,7 +12,7 @@ RUN mkdir /certs
 
 COPY --from=fetch-cert /root.crt /root/.postgresql/root.crt
 
-COPY ./base-data-retriever/* /base-data-retriever/
-WORKDIR /base-data-retriever
+COPY ./base_data_retriever/* /base_data_retriever/
+WORKDIR /base_data_retriever
 
 CMD ["gunicorn","-k","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:80","app:app"]
