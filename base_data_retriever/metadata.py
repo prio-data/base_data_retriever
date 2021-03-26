@@ -3,16 +3,13 @@ import pickle
 from db import engine
 from sqlalchemy import MetaData
 from settings import DB_SCHEMA
-
+from cache import cache
 
 def get_reflected_metadata():
-    cache_file = "/tmp/md.pckl"
-    if not os.path.exists(cache_file):
+    try:
+        meta = cache.get("database-reflection")
+    except KeyError:
         meta = MetaData(bind=engine,schema=DB_SCHEMA)
         meta.reflect()
-        with open(cache_file,"wb") as f:
-            pickle.dump(meta,f)
-    else:
-        with open(cache_file,"rb") as f:
-            meta = pickle.load(f)
+        cache.set("database-reflection",meta)
     return meta

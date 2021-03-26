@@ -43,6 +43,7 @@ def join_network(tables:Dict[str,sa.Table])->nx.DiGraph:
                     reference=fk.parent,
                     referent=fk.column
                 )
+    logger.debug("Database is a digraph with %s nodes",len(digraph.nodes))
     return digraph 
 
 def compose_join(network,loa_name,table_name,column_name,loa_index_columns,agg_fn="avg"):
