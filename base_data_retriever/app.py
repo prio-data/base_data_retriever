@@ -13,11 +13,10 @@ from db import Session
 from loa import index_columns
 from metadata import get_reflected_metadata
 from exceptions import QueryError,ConfigError
-
-import settings
+from settings import config
 
 try:
-    logging.basicConfig(level=getattr(logging,settings.LOG_LEVEL))
+    logging.basicConfig(level=getattr(logging,config("LOG_LEVEL")))
 except AttributeError:
     pass
 

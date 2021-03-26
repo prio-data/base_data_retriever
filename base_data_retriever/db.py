@@ -1,32 +1,22 @@
-import os
-import requests
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from postgres_azure_certificate_auth import sec_con,AppConfig,KeyvaultSecrets
-import settings
+from postgres_azure_certificate_auth import sec_con
+from settings import config
 
-if settings.PROD:
-    secrets = KeyvaultSecrets(settings.KEY_VAULT_URL)
-    config = AppConfig(secrets["appconfig-connection-string"])
-
-    dbname = config["dbname"]
-    def get_con():
-        return sec_con(secrets,config,dbname=dbname)
-else:
-    cert_rq = requests.get("https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem")
-    secrets = {
-        "sslrootcert":cert_rq.content.decode(),
-        "password":settings.DB_PASSWORD,
+sec = {
+        "sslcert": config("SSL_CERT"),
+        "sslkey": config("SSL_KEY"),
+        "sslrootcert": config("SSL_ROOT_CERT"),
+        "password": config("DB_PASSWORD"),
     }
-    config = {
-        "host":settings.DB_HOST,
-        "user":settings.DB_USER,
+con = {
+        "host": config("DB_HOST"),
+        "user": config("DB_USER"),
     }
 
-    def get_con():
-        return sec_con(secrets,config,auth="password",dbname=settings.DB_NAME)
+def get_con():
+    return sec_con(sec,con,dbname=config("BASE_DB_NAME"))
 
 engine = create_engine("postgresql://",creator=get_con)
 Base = declarative_base()

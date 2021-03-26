@@ -1,9 +1,9 @@
 import os
 import abc
 import pickle
-import settings
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceNotFoundError
+from settings import config
 
 class AbstractCache(abc.ABC):
     @abc.abstractmethod
@@ -60,10 +60,7 @@ class BlobStorageCache(AbstractCache):
             .upload_blob(pickle.dumps(obj))
             )
 
-if settings.PROD:
-    cache = BlobStorageCache(
-            settings.BLOB_STORAGE_CONNECTION_STRING,
-            settings.BLOB_STORAGE_GEN_CACHE_CONTAINER
-        )
-else:
-    cache = FsCache(settings.CACHE_DIR)
+cache = BlobStorageCache(
+        config("BLOB_STORAGE_CONNECTION_STRING"),
+        config("BLOB_STORAGE_GENERIC_CACHE")
+    )
