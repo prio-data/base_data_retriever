@@ -9,8 +9,9 @@ from fastapi import Depends
 import fastapi
 import pandas as pd
 
-from . import settings, exceptions, reflection, db, query_planning
 from base_data_retriever import __version__
+
+from . import settings, exceptions, reflection, db, query_planning
 
 try:
     logging.basicConfig(level=getattr(logging,settings.config("LOG_LEVEL")))
@@ -23,6 +24,11 @@ logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 app = fastapi.FastAPI()
+
+with closing(db.Session()) as sess:
+    metadata = reflection.reflect_metadata(
+            sess.connection(),
+            settings.config("BASE_DATA_SCHEMA"))
 
 def get_sess():
     session = db.Session()
@@ -37,8 +43,6 @@ def get_variable_value(
         var: str,
         agg: str,
         session = Depends(get_sess)):
-
-    metadata = reflection.reflect_metadata(session.connection(), settings.config("BASE_DATA_SCHEMA"))
     network = query_planning.join_network(metadata.tables)
 
     table,variable = var.split(".")
