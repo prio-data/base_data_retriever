@@ -1,15 +1,15 @@
-import logging
 from collections import namedtuple,defaultdict
 
-from itertools import chain
 from functools import reduce
 from operator import add
 import unittest
+
 from sqlalchemy import MetaData,Table,Column,ForeignKey,Integer
-from sqlalchemy.sql.functions import Function
-from query_planning import compose_join,join_network,join_direction,query_with_ops
+
 from networkx.algorithms.shortest_paths import shortest_path
 from networkx.exception import NetworkXNoPath
+
+from base_data_retriever.query_planning import compose_join,join_network,query_with_ops
 
 Statement = namedtuple("sql_statement",("type","args","kwargs"))
 
@@ -49,7 +49,7 @@ class QueryPlannerTest(unittest.TestCase):
                 Column("pk",Integer,primary_key=True),
                 Column("one_fk",Integer,ForeignKey("one.pk")),
             )
-        
+
         network = join_network(md.tables)
 
         self.assertListEqual(
@@ -66,6 +66,7 @@ class QueryPlannerTest(unittest.TestCase):
                 Column("pk",Integer,primary_key=True),
                 Column("two_fk",Integer,ForeignKey("two.pk"))
                 )
+
         table_four = Table("four",md,
                 Column("pk",Integer,primary_key=True),
                 Column("three_fk",Integer,ForeignKey("three.pk"))
@@ -84,7 +85,7 @@ class QueryPlannerTest(unittest.TestCase):
                 Column("pk",Integer,primary_key=True),
                 Column("five_fk",Integer,ForeignKey("five.pk"))
                 )
-        
+       
         self.assertListEqual(
                 [tbl.name for tbl in shortest_path(join_network(md.tables),table_six,table_one)],
                 ["six","five","one"]
@@ -128,11 +129,3 @@ class QueryPlannerTest(unittest.TestCase):
                 [stmt for stmt in mock_query.statements if stmt.type == "from"][0].args[0].name,
                 "two"
             )
-
-        # Aggregations get a groupby and function statement
-        mock_query = query_with_ops(MockQuery(),
-                compose_join,join_network(md.tables),"one","two","pk",[("one","pk")])
-        self.assertIn("group_by",[stmt.type for stmt in mock_query.statements])
-        selects = [stmt for stmt in mock_query.statements if stmt.type == "select"]
-        select_argtypes = [type(a) for a in reduce(add,[stmt.args for stmt in selects])]
-        self.assertIn(Function,select_argtypes)
