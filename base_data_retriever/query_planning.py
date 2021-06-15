@@ -9,10 +9,14 @@ from networkx.algorithms.shortest_paths import shortest_path
 
 import sqlalchemy as sa
 
-from mytools import class_partial
-import exceptions
+from . import exceptions
 
 logger = logging.getLogger(__name__)
+
+def class_partial(method,*args,**kwargs):
+    def undotted(instance):
+        return getattr(instance,method)(*args,**kwargs)
+    return undotted
 
 class Direction(enum.Enum):
     forwards = 1
@@ -89,7 +93,6 @@ def compose_join(network,loa_name,table_name,column_name,loa_index_columns,agg_f
     # Compute joins (+ agg)
     join = []
     joined = set()
-    
     for idx,c in enumerate(all_columns):
         try:
             path = shortest_path(network, loa_table, c.table)
@@ -114,11 +117,11 @@ def compose_join(network,loa_name,table_name,column_name,loa_index_columns,agg_f
                 pass
             prev = table
 
-    # Selects 
+    # Selects
     all_columns = [col.label(name) for col,name in zip(all_columns,names)]
     select = [class_partial("add_columns",col) for col in all_columns]
 
-    # Aggregation 
+    # Aggregation
     if aggregates:
         group_by = [class_partial("group_by",c) for c in index_columns_ref]
     else:
