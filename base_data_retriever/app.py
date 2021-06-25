@@ -5,7 +5,7 @@ import io
 import logging
 from contextlib import closing
 
-from fastapi import Depends
+from fastapi import Depends, Response
 import fastapi
 import pandas as pd
 
@@ -37,7 +37,7 @@ def get_sess():
     finally:
         session.close()
 
-@app.get("/{loa}/{var}/{agg}/")
+@app.get("/fetch/{loa}/{var}/{agg}/")
 def get_variable_value(
         loa: str,
         var: str,
@@ -84,3 +84,22 @@ def handshake():
     return {
         "version": __version__
         }
+
+@app.get("/tables/")
+def list_tables():
+    return {
+        "tables": [table.name for table in metadata.tables.values()]
+    }
+
+@app.get("/tables/{table_name}/")
+def show_table(table_name: str):
+    table = [table for table in metadata.tables.values() if table.name == table_name]
+
+    if table:
+        table,*_ = table
+        return {
+            "name": table_name,
+            "columns": [column.name for column in table.columns]
+        }
+    else:
+        return Response(status_code = 404)
