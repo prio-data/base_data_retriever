@@ -37,7 +37,7 @@ def get_sess():
     finally:
         session.close()
 
-@app.get("/{loa}/{var}/{agg}/")
+@app.get("/fetch/{loa}/{var}/{agg}/")
 def get_variable_value(
         loa: str,
         var: str,
