@@ -8,6 +8,8 @@ from contextlib import closing
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
+import views_schema as schema
+
 
 from base_data_retriever import __version__
 
@@ -85,21 +87,37 @@ def handshake():
         "version": __version__
         }
 
-@app.get("/tables/")
-def list_tables():
+@app.get("/tables")
+def list_tables()-> schema.DocumentationEntry:
+    table_names = [tbl.name for tbl in metadata.tables.values()]
+    tables = [schema.DocumentationEntry(name=n, path=n) for n in table_names]
     return {
-        "tables": [table.name for table in metadata.tables.values()]
-    }
+        "name": "tables",
+        "entries": tables
+        }
 
-@app.get("/tables/{table_name}/")
-def show_table(table_name: str):
+@app.get("/tables/{table_name}")
+def show_table(table_name: str)-> schema.DocumentationEntry:
     table = [table for table in metadata.tables.values() if table.name == table_name]
 
     if table:
         table,*_ = table
+        column_names = [column.name for column in table.columns]
+        columns = [schema.DocumentationEntry(name = n, path = n) for n in column_names]
         return {
             "name": table_name,
-            "columns": [column.name for column in table.columns]
+            "entries": columns
         }
+    else:
+        return Response(status_code = 404)
+
+@app.get("/tables/{table_name}/{column_name}")
+def show_column(table_name: str, column_name: str)-> schema.DocumentationEntry:
+    table = [table for table in metadata.tables.values() if table.name == table_name]
+    if table and (column := [column for column in table[0].columns if column.name == column_name]):
+        column,*_ = column
+        return {
+                "name": column.name
+            }
     else:
         return Response(status_code = 404)
