@@ -9,7 +9,7 @@ from networkx.algorithms.shortest_paths import shortest_path
 
 import sqlalchemy as sa
 
-from . import exceptions
+from . import exceptions, definitions
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +97,16 @@ def compose_join(network,loa_name,table_name,column_name,loa_index_columns,agg_f
         try:
             path = shortest_path(network, loa_table, c.table)
         except NetworkXNoPath:
+            try:
+                assert agg_fn in definitions.AGGREGATION_FUNCTIONS
+            except AssertionError:
+                raise exceptions.AggregationNameError(
+                        "Aggregation function {agg_fn} "
+                        "is not available. "
+                        "Available functions are: "
+                        f"{', '.join(definitions.AGGREGATION_FUNCTIONS)}."
+                        )
+
             aggregates = True
             path = shortest_path(network,c.table, loa_table)
             path.reverse()

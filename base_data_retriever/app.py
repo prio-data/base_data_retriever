@@ -59,6 +59,8 @@ def get_variable_value(
     except exceptions.ConfigError as ce:
         logger.error("exceptions.ConfigError: %s",str(ce))
         return fastapi.Response(str(ce),status_code=500)
+    except exceptions.AggregationNameError as ane:
+        return fastapi.Response(str(ane),status_code=400)
 
     bytes_buffer = io.BytesIO()
 
