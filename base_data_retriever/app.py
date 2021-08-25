@@ -4,12 +4,13 @@ Internal API for getting data from the DB with a simple, clear interface.
 import io
 import logging
 from contextlib import closing
+from functools import lru_cache
 
+from environs import EnvError
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
 import views_schema as schema
-
 
 from base_data_retriever import __version__
 
@@ -17,20 +18,22 @@ from . import settings, exceptions, reflection, db, query_planning
 
 try:
     logging.basicConfig(level=getattr(logging,settings.config("LOG_LEVEL")))
-except AttributeError:
+except EnvError:
     pass
 
 logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
 logger.setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
 
 app = fastapi.FastAPI()
 
-with closing(db.Session()) as sess:
-    metadata = reflection.reflect_metadata(
-            sess.connection(),
-            settings.config("BASE_DATA_SCHEMA"))
+@lru_cache(maxsize=None)
+def metadata():
+    with closing(db.Session()) as sess:
+        md = reflection.reflect_metadata(
+                sess.connection(),
+                settings.config("DB_SCHEMA"))
+    return md
 
 def get_sess():
     session = db.Session()
@@ -45,7 +48,7 @@ def get_variable_value(
         var: str,
         agg: str,
         session = Depends(get_sess)):
-    network = query_planning.join_network(metadata.tables)
+    network = query_planning.join_network(metadata().tables)
 
     table,variable = var.split(".")
 
@@ -91,7 +94,7 @@ def handshake():
 
 @app.get("/tables")
 def list_tables()-> schema.DocumentationEntry:
-    table_names = [tbl.name for tbl in metadata.tables.values()]
+    table_names = [tbl.name for tbl in metadata().tables.values()]
     tables = [schema.DocumentationEntry(name=n, path=n) for n in table_names]
     return {
         "name": "tables",
@@ -100,7 +103,7 @@ def list_tables()-> schema.DocumentationEntry:
 
 @app.get("/tables/{table_name}")
 def show_table(table_name: str)-> schema.DocumentationEntry:
-    table = [table for table in metadata.tables.values() if table.name == table_name]
+    table = [table for table in metadata().tables.values() if table.name == table_name]
 
     if table:
         table,*_ = table
@@ -115,7 +118,7 @@ def show_table(table_name: str)-> schema.DocumentationEntry:
 
 @app.get("/tables/{table_name}/{column_name}")
 def show_column(table_name: str, column_name: str)-> schema.DocumentationEntry:
-    table = [table for table in metadata.tables.values() if table.name == table_name]
+    table = [table for table in metadata().tables.values() if table.name == table_name]
     if table and (column := [column for column in table[0].columns if column.name == column_name]):
         column,*_ = column
         return {

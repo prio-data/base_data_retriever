@@ -1,24 +1,17 @@
 """
 Required settings:
-* Env:
-    - KEY_VAULT_URL
-* Secrets:
-    - DB_USER
-    - DB_PASSWORD
-    - BLOB_STORAGE_CONNECTION_STRING
 * Config:
-    - BASE_DB_NAME
-    - BASE_DATA_SCHEMA
     - DB_HOST
-    - BLOB_STORAGE_GENERIC_CACHE
-    - LOG_LEVEL
+    - DB_PORT
+    - DB_NAME
+    - DB_USER
+    - DB_SCHEMA
 """
-import environs
-from fitin import views_config
 
+import environs
 env = environs.Env()
 env.read_env()
-config = views_config(env.str("KEY_VAULT_URL"))
+config = env
 
 """
 LOA metadata

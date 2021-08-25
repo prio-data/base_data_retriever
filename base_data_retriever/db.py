@@ -1,23 +1,17 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from postgres_azure_certificate_auth import sec_con
-from . import settings
+from .settings import config
 
-sec = {
-        "sslcert": settings.config("SSL_CERT"),
-        "sslkey": settings.config("SSL_KEY"),
-        "sslrootcert": settings.config("SSL_ROOT_CERT"),
-        "password": settings.config("DB_PASSWORD"),
-    }
-con = {
-        "host": settings.config("DB_HOST"),
-        "user": settings.config("DB_USER"),
-    }
+connection_string = ("postgresql+psycopg2://"
+        f"{config('DB_USER')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"
+        )
 
-def get_con():
-    return sec_con(sec,con,dbname=settings.config("BASE_DB_NAME"))
+if os.path.exists(os.path.expanduser("~/.postgresql")):
+    connection_string += "?sslmode=require"
 
-engine = create_engine("postgresql://",creator=get_con)
+engine = create_engine(connection_string)
+
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
