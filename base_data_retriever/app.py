@@ -21,8 +21,6 @@ try:
 except EnvError:
     pass
 
-logger = logging.getLogger("azure.core.pipeline.policies.http_logging_policy")
-logger.setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 app = fastapi.FastAPI()
