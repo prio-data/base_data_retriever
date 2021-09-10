@@ -7,4 +7,5 @@ two data formats.
 
 It does so by reflecting the relational structure of the database to figure out
 how to join tables, in order to produce the desired output format.
+
 For information about how to contribute, see [contributing](https://www.github.com/prio-data/contributing).
