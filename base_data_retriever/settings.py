@@ -28,7 +28,7 @@ LOAS = {
     "country_month":{
         "index_columns":[
                 "country_month.month_id",
-                "country.gwcode",
+                "country_month.country_id",
             ],
     },
 }
