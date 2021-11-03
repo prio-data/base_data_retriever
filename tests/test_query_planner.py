@@ -1,7 +1,5 @@
-from collections import namedtuple,defaultdict
+from collections import defaultdict
 
-from functools import reduce
-from operator import add
 import unittest
 
 from sqlalchemy import MetaData,Table,Column,ForeignKey,Integer
@@ -10,33 +8,8 @@ from networkx.algorithms.shortest_paths import shortest_path
 from networkx.exception import NetworkXNoPath
 
 from base_data_retriever.query_planning import compose_join,join_network,query_with_ops
+from .testutils import MockQuery
 
-Statement = namedtuple("sql_statement",("type","args","kwargs"))
-
-class MockQuery:
-    def __init__(self):
-        self.statements = []
-
-    def select_from(self,*args,**kwargs):
-        self.statements.append(Statement("from",args,kwargs))
-        return self
-
-    def add_columns(self,*args,**kwargs):
-        self.statements.append(Statement("select",args,kwargs))
-        return self
-
-    def join(self,*args,**kwargs):
-        self.statements.append(Statement("join",args,kwargs))
-        return self
-
-    def group_by(self,*args,**kwargs):
-        self.statements.append(Statement("group_by",args,kwargs))
-        return self
-
-    def __str__(self):
-        return (f"Query with the following ops:\n"
-                f"{self.statements}"
-            )
 
 class QueryPlannerTest(unittest.TestCase):
     def test_join_network(self):
