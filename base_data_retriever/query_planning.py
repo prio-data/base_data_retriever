@@ -21,6 +21,7 @@ def class_partial(method,*args,**kwargs):
 class Direction(enum.Enum):
     forwards = 1
     backwards = 2
+    equal = 3
 
 def join_network(tables:Dict[str,sa.Table])->nx.DiGraph:
     """
@@ -29,24 +30,32 @@ def join_network(tables:Dict[str,sa.Table])->nx.DiGraph:
     perform a join when retrieving data from this collection of tables.
     """
     digraph = nx.DiGraph()
-    
     def get_fk_tables(fk):
         return [tbl for tbl in tables.values() if fk.references(tbl)]
 
     for table in tables.values():
-
         for fk in table.foreign_keys:
             try:
                 ref_table = get_fk_tables(fk)[-1]
             except IndexError:
-                print("No table found for fk: %s",str(fk))
-                continue 
+                logger.debug("No table found for fk: %s",str(fk))
+                continue
+
             digraph.add_edge(
                     table,
                     ref_table,
                     reference=fk.parent,
                     referent=fk.column
                 )
+
+            if {fk.parent} == set(table.primary_key):
+                digraph.add_edge(
+                        ref_table,
+                        table,
+                        reference=fk.column,
+                        referent=fk.parent,
+                    )
+
     logger.debug("Database is a digraph with %s nodes",len(digraph.nodes))
     return digraph
 
