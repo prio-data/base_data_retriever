@@ -13,7 +13,7 @@ import views_schema as schema
 import views_query_planning
 from base_data_retriever import __version__
 
-from . import settings, exceptions, db, models
+from . import settings, exceptions, db, models, querying
 
 try:
     logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -29,6 +29,7 @@ base_dblayer = db.BaseDatabaseLayer(
             name     = settings.BASE_DB_NAME,
             sslmode  = settings.BASE_DB_SSLMODE,
             password = settings.BASE_DB_PASSWORD,
+            schema   = settings.BASE_DB_SCHEMA
         )
 
 loa_dblayer = db.DatabaseLayer(
@@ -41,34 +42,35 @@ loa_dblayer = db.DatabaseLayer(
             metadata = models.Base.metadata
         )
 
-logger = logging.getLogger(__name__)
+test_compose = querying.QueryComposer(base_dblayer.join_network, models.LevelOfAnalysis(name = "country_month", time_index = "month_id", unit_index = "country_id"))
 
 app = fastapi.FastAPI()
 
-@app.get("/fetch/{loa}/{var}/{agg}/")
+@app.get("/fetch/{loa_name}/{var}/{agg}/")
 def get_variable_value(
-        loa: str,
+        loa_name: str,
         var: str,
         agg: str,
         base_session = Depends(base_dblayer.session_dependency),
         loa_session = Depends(loa_dblayer.session_dependency)
         ):
 
-    loa = loa_session.query(models.LevelOfAnalysis).get(loa)
+    loa = loa_session.query(models.LevelOfAnalysis).get(loa_name)
+
     if loa is None:
-        if loa in settings.DEFAULT_LOAS:
-            logger.info(f"LOA {loa} defined from defaults.")
-            time_index, unit_index = settings.DEFAULT_LOAS[loa]["index_columns"]
+        if loa_name in settings.DEFAULT_LOAS:
+            logger.info(f"LOA {loa_name} defined from defaults.")
+            time_index, unit_index = settings.DEFAULT_LOAS[loa_name]["index_columns"]
             loa = models.LevelOfAnalysis(
-                    name = loa,
+                    name = loa_name,
                     time_index = time_index,
                     unit_index = unit_index,
                 )
             loa_session.add(loa)
             loa_session.commit()
         else:
-            logger.warning(f"LOA {loa} requested, but not found")
-            return Response(f"Loa {loa} is not defined", status_code = 400)
+            logger.warning(f"LOA {loa_name} requested, but not found")
+            return Response(f"Loa {loa_name} is not defined", status_code = 400)
 
     table,variable = var.split(".")
 
@@ -77,7 +79,7 @@ def get_variable_value(
                 base_session.query(),
                 views_query_planning.compose_join,
                 base_dblayer.join_network,
-                loa,
+                loa.name,
                 table,
                 variable,
                 (loa.time_index, loa.unit_index),

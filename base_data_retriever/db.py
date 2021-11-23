@@ -20,29 +20,32 @@ class DatabaseLayer():
             user: str,
             name: str,
             sslmode: str,
+            schema: str = "public",
             password: Optional[str] = None,
             metadata: Optional[sqlalchemy.MetaData] = None):
 
         self.host     = host
         self.port     = port
         self.user     = user
-        self.name     = name
+        self.dbname   = name
         self.sslmode  = sslmode
         self.password = password
+        self.schema = schema 
 
 
         self._engine  = sqlalchemy.create_engine("postgresql+psycopg2://", creator = self._creator_factory())
 
         self._metadata = metadata
+
         if self._metadata is not None:
-            self._metadata.bind(self._engine)
+            self._metadata.bind = self._engine
 
         self.Session  = sessionmaker(bind = self._engine)
 
     @property
     def metadata(self):
         if self._metadata is None:
-            self._metadata = sqlalchemy.MetaData(bind = self._engine)
+            self._metadata = sqlalchemy.MetaData(bind = self._engine, schema = self.schema)
             self._metadata.reflect()
         return self._metadata
 
@@ -60,7 +63,7 @@ class DatabaseLayer():
         return self._engine.connect()
 
     @property
-    def _constring(self):
+    def connection_string(self):
         s = [f"{p}={getattr(self,p)}" for p in ("host","port","user","dbname","sslmode")]
         if self.password:
             s += f"password={self.password}"
@@ -69,7 +72,7 @@ class DatabaseLayer():
 
     def _creator_factory(self):
         def creator():
-            return psycopg2.connect(self._constring)
+            return psycopg2.connect(self.connection_string)
 
         return creator
 
