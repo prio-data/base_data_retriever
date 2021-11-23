@@ -101,7 +101,7 @@ def get_variable_value(
     logger.info("Got %s rows",str(dataframe.shape[0]))
 
     try:
-        loa_indices = ["_".join((tbl,col)) for tbl,col in settings.index_columns(loa)]
+        loa_indices = ["_".join((loa.name, col)) for col in (loa.time_index, loa.unit_index)]
         dataframe.set_index(loa_indices,inplace=True)
     except KeyError:
         missing_idx = set(loa_indices).difference(dataframe.columns)
