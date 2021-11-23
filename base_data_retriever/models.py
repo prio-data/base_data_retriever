@@ -18,6 +18,8 @@ class LevelOfAnalysis(Base):
     unit_index:  str
 
     """
+    __tablename__ = "level_of_analysis"
+
     name        = sa.Column(sa.String, primary_key = True)
     description = sa.Column(sa.String, default = None, nullable = True)
     time_index  = sa.Column(sa.String)
