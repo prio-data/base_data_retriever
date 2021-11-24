@@ -41,42 +41,42 @@ Might eventually be replaced by API calls to a service that manages these.
 DEFAULT_LOAS = {
     "priogrid_month":{
         "index_columns":[
-                "priogrid_month.month_id",
-                "priogrid_month.priogrid_gid",
+                "month_id",
+                "priogrid_gid",
             ],
     },
     "priogrid_year":{
         "index_columns":[
-                "priogrid_year.year_id",
-                "priogrid_year.priogrid_gid",
+                "year_id",
+                "priogrid_gid",
             ],
     },
 
     "country_month":{
         "index_columns":[
-                "country_month.month_id",
-                "country_month.country_id",
+                "month_id",
+                "country_id",
             ],
     },
     "country_year":{
         "index_columns":[
-                "country_year.year_id",
-                "country_year.country_id",
+                "year_id",
+                "country_id",
             ]
 
     },
 
     "actor_month":{
         "index_columns":[
-            "actor_month.month_id",
-            "actor_month.actor_id",
+            "month_id",
+            "actor_id",
         ]
     },
 
     "actor_year":{
         "index_columns":[
-            "actor_year.year_id",
-            "actor_year.actor_id",
+            "year_id",
+            "actor_id",
         ]
     },
 }

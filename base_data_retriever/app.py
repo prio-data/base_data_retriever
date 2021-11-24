@@ -1,19 +1,23 @@
 """
+app
+===
+
 Internal API for getting data from the DB with a simple, clear interface.
 """
+from typing import Optional
 import io
 import logging
 
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import Session
 from environs import EnvError
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
 import views_schema as schema
 
-import views_query_planning
 from base_data_retriever import __version__
-
-from . import settings, exceptions, db, models, querying
+from . import settings, db, models, querying
 
 try:
     logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -42,20 +46,22 @@ loa_dblayer = db.DatabaseLayer(
             metadata = models.Base.metadata
         )
 
-test_compose = querying.QueryComposer(base_dblayer.join_network, models.LevelOfAnalysis(name = "country_month", time_index = "month_id", unit_index = "country_id"))
+async def with_loa_db_session()-> Session:
+    try:
+        con = loa_dblayer.Session()
+        yield con
+    finally:
+        con.close()
 
-app = fastapi.FastAPI()
+async def with_base_db_connection()-> Connection:
+    try:
+        con = base_dblayer.connect()
+        yield con
+    finally:
+        con.close()
 
-@app.get("/fetch/{loa_name}/{var}/{agg}/")
-def get_variable_value(
-        loa_name: str,
-        var: str,
-        agg: str,
-        base_session = Depends(base_dblayer.session_dependency),
-        loa_session = Depends(loa_dblayer.session_dependency)
-        ):
-
-    loa = loa_session.query(models.LevelOfAnalysis).get(loa_name)
+async def with_loa_model(loa_name: str, session: Session = Depends(with_loa_db_session)) -> models.LevelOfAnalysis:
+    loa = session.query(models.LevelOfAnalysis).get(loa_name)
 
     if loa is None:
         if loa_name in settings.DEFAULT_LOAS:
@@ -66,54 +72,54 @@ def get_variable_value(
                     time_index = time_index,
                     unit_index = unit_index,
                 )
-            loa_session.add(loa)
-            loa_session.commit()
+            session.add(loa)
+            session.commit()
         else:
             logger.warning(f"LOA {loa_name} requested, but not found")
-            return Response(f"Loa {loa_name} is not defined", status_code = 400)
 
-    table,variable = var.split(".")
+    yield loa
+
+
+async def with_query_composer(loa: models.LevelOfAnalysis = Depends(with_loa_model))-> Optional[querying.QueryComposer]:
+    if loa is None:
+        yield loa
+    else:
+        yield querying.QueryComposer(base_dblayer.join_network, loa)
+
+app = fastapi.FastAPI()
+
+@app.get("/fetch/{loa_name}/{variable}/{aggregation_function}/")
+def get_variable_value(
+        variable: str,
+        aggregation_function: str,
+        composer: Optional[querying.QueryComposer] = Depends(with_query_composer),
+        database_connection = Depends(with_base_db_connection),
+        )-> Response:
+
+    def error_response(message: str):
+        return Response(message, status_code = 400)
+
+    def data_response(query: str):
+        logger.debug("Executing %s",str(query))
+        dataframe = pd.read_sql_query(query, database_connection)
+        logger.info(f"Got {dataframe.shape[0]} rows")
+        bytes_buffer = io.BytesIO()
+        dataframe.to_parquet(bytes_buffer)
+        return Response(bytes_buffer.getvalue(), media_type="application/octet-stream")
+
+    if composer is None:
+        return Response("LOA not defined", status_code = 404)
 
     try:
-        query = views_query_planning.query_with_ops(
-                base_session.query(),
-                views_query_planning.compose_join,
-                base_dblayer.join_network,
-                loa.name,
-                table,
-                variable,
-                (loa.time_index, loa.unit_index),
-                agg)
+        table, column = variable.split(".")
+    except ValueError:
+        return Response(
+                f"Failed to parse variable {variable}. "
+                "It should be in the format table.column",
+                status_code=400)
 
-    except exceptions.QueryError as qe:
-        logger.error("exceptions.QueryError: %s",str(qe))
-        return fastapi.Response(str(qe),status_code=400)
-    except exceptions.ConfigError as ce:
-        logger.error("exceptions.ConfigError: %s",str(ce))
-        return fastapi.Response(str(ce),status_code=500)
-    except exceptions.AggregationNameError as ane:
-        return fastapi.Response(str(ane),status_code=400)
-
-    bytes_buffer = io.BytesIO()
-
-    logger.debug("Executing %s",str(query))
-
-    logger.info("Fetching data")
-    dataframe = pd.read_sql_query(query.statement,base_session.connection())
-    logger.info("Got %s rows",str(dataframe.shape[0]))
-
-    try:
-        loa_indices = ["_".join((loa.name, col)) for col in (loa.time_index, loa.unit_index)]
-        dataframe.set_index(loa_indices,inplace=True)
-    except KeyError:
-        missing_idx = set(loa_indices).difference(dataframe.columns)
-        logger.error("Missing index columns: %s",", ".join(missing_idx))
-        return fastapi.Response("Couldn't set index.", status_code=500)
-    logger.debug("Sorting dataframe")
-    dataframe.sort_index(inplace=True)
-
-    dataframe.to_parquet(bytes_buffer)
-    return fastapi.Response(bytes_buffer.getvalue(),media_type="application/octet-stream")
+    query = composer.expression(table, column, aggregation_function)
+    return query.either(error_response, data_response)
 
 @app.get("/loa/")
 def list_levels_of_analysis(session = Depends(loa_dblayer.session_dependency)):
@@ -122,6 +128,7 @@ def list_levels_of_analysis(session = Depends(loa_dblayer.session_dependency)):
 
 @app.post("/loa/")
 def define_level_of_analysis(session = Depends(loa_dblayer.session_dependency)):
+    session
     pass
 
 @app.get("/loa/{name:str}/")

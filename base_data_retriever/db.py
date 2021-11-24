@@ -1,8 +1,11 @@
+import logging
 from typing import Optional
 import psycopg2
 import sqlalchemy
 import views_query_planning
 from sqlalchemy.orm import sessionmaker
+
+logger = logging.getLogger(__name__)
 
 class DatabaseLayer():
     """
@@ -30,7 +33,7 @@ class DatabaseLayer():
         self.dbname   = name
         self.sslmode  = sslmode
         self.password = password
-        self.schema = schema 
+        self.schema = schema
 
 
         self._engine  = sqlalchemy.create_engine("postgresql+psycopg2://", creator = self._creator_factory())
@@ -45,9 +48,20 @@ class DatabaseLayer():
     @property
     def metadata(self):
         if self._metadata is None:
+            logger.debug(f"Reflecting metadata for database postgresql://{self.host}/{self.dbname}")
             self._metadata = sqlalchemy.MetaData(bind = self._engine, schema = self.schema)
             self._metadata.reflect()
         return self._metadata
+
+    @property
+    def connection_dependency(self):
+        def dep():
+            con = self.connect()
+            try:
+                yield con
+            finally:
+                con.close()
+        return dep
 
     @property
     def session_dependency(self):

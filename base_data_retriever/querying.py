@@ -138,9 +138,9 @@ class QueryComposer():
         if aggregates:
             selection_function = curry(aggregate, aggregation_function, self.loa_table.value)
         else:
-            selection_function = lambda to_select, select_from: select_from.add_columns(to_select)
+            selection_function = lambda to_select, select_from: Right(select_from.add_columns(to_select))
 
-        return Either.apply(curry(selection_function)).to_arguments(to_select, select_from).then(str)
+        return Either.apply(curry(selection_function)).to_arguments(to_select, select_from).join().then(str)
 
     def _table(self, name)-> Maybe[Table]:
         """
@@ -186,11 +186,15 @@ class QueryComposer():
 
     @property
     def index_columns(self) -> Maybe[Tuple[Column, Column]]:
-        time,unit = (self._column(self.loa.name, col) for col in (self.loa.time_index, self.loa.unit_index))
-        if time.is_just and unit.is_just:
-            return Just((time.value, unit.value))
+        time, unit = (self._column(self.loa.name, col) for col in (self.loa.time_index, self.loa.unit_index))
+        return Maybe.apply(curry(lambda t,u: Just((t,u)))).to_arguments(time, unit).join()
+
+    def _aggregation_function(self, name: str)-> Maybe[str]:
+        if name in self._allowed_aggregation_functions:
+            return Just(name)
         else:
             return Nothing
+
 
 def path(forwards: bool, network: DiGraph, a: T, b: T)-> Maybe[Deque[T]]:
     """
@@ -239,5 +243,14 @@ def aggregate(aggregation_function: str, aggregate_to: Table, column: Column, se
 
     """
 
-    aggregation_function = getattr(sql.func, aggregation_function)
-    return select.add_columns(aggregation_function(column)).group_by(*set(aggregate_to.primary_key))
+    _allowed_aggregation_functions = [
+            "sum",
+            "max",
+            "min",
+            "avg",
+        ]
+    if aggregation_function in _allowed_aggregation_functions:
+        aggregation_function = getattr(sql.func, aggregation_function)
+        return Right(select.add_columns(aggregation_function(column)).group_by(*set(aggregate_to.primary_key)))
+    else:
+        return Left(f"Aggregation function {aggregation_function} does not exist.")

@@ -1,4 +1,5 @@
 
+import logging
 from unittest import TestCase
 from sqlalchemy import Table, Column, MetaData, ForeignKey, Integer
 from views_query_planning import join_network
@@ -81,4 +82,20 @@ class TestQueryComposer(TestCase):
         for fn_name in ("avg", "sum", "min", "max"):
             expression = compose.expression("b","val",aggregation_function=fn_name)
             self.assertIn(fn_name, expression.value)
+    
+    def test_bad_loa_def(self):
+        loa = LevelOfAnalysis(name = "a", time_index = "foo", unit_index = "bar")
+        compose = QueryComposer(self.network, loa)
+        e = compose.expression("b","val")
+        self.assertTrue(e.is_left)
+
+    def test_bad_aggregation_function(self):
+        loa = LevelOfAnalysis(name = "a", time_index = "t", unit_index = "u")
+        compose = QueryComposer(self.network, loa)
+        a = compose.expression("b","val",aggregation_function="foobar")
+        b = compose.expression("b","val",aggregation_function="avg")
+        print(a)
+        print(b)
+        self.assertTrue(a.is_left)
+        self.assertTrue(a.is_right)
 
