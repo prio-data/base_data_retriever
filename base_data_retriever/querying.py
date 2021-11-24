@@ -1,11 +1,19 @@
+"""
+querying
+========
+
+This module contains code for computing SQL queries. Functionality is primarily
+exposed via the QueryComposer class.
+
+"""
 import logging
-from typing import Deque, Tuple
+from typing import Deque, Tuple, TypeVar
 from collections import deque
 from sqlalchemy import Table, Column
 from sqlalchemy import sql
-from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql.selectable import Select, Join
 from toolz.functoolz import curry
-from networkx import NetworkXNoPath
+from networkx import NetworkXNoPath, DiGraph
 from networkx.algorithms.shortest_paths import shortest_path
 from pymonad.either import Left, Right, Either
 from pymonad.maybe import Maybe, Just, Nothing
@@ -13,31 +21,43 @@ from . import models
 
 logger = logging.getLogger(__name__)
 
-def path(forwards, network, a, b)-> Maybe[Deque[Table]]:
-    if forwards:
-        x,y = a,b
-        post = lambda x:x
-    else:
-        x,y = b,a
-        post = reversed
-
-    try:
-        return Just(deque(post(shortest_path(network, x, y))))
-    except NetworkXNoPath:
-        logger.debug(f"No path between {a} and {b} in {network}! ({'forwards' if forwards else 'backwards'})")
-        return Nothing
-
-def aggregate(aggregation_function: str, aggregate_to: Table, column: Column, select: Select)-> Select:
-    aggregation_function = getattr(sql.func, aggregation_function)
-    return select.add_columns(aggregation_function(column)).group_by(*set(aggregate_to.primary_key))
+T = TypeVar("T")
 
 class QueryComposer():
-    def __init__(self, network, loa):
+
+    def __init__(self, network: DiGraph, loa: models.LevelOfAnalysis):
+        """
+        QueryComposer
+        =============
+
+        arguments:
+            network (networkx.DiGraph): A network as produced by views_query_planning.join_network
+            loa (LevelOfAnalysis):      A level of analysis model
+
+        The query composer lets you compute SQL queries for retrieving data in
+        a normalized database, through joining and aggregating.
+
+        This is exposed through the .expression method, which lets you get an
+        expression selecting a column from a table, at the level of analysis
+        that the composer was instantiated with.
+
+        """
         self.network = network
         self._tables = {tbl.name: tbl for tbl in self.network}
         self.loa: models.LevelOfAnalysis = loa
 
-    def joins(self, join_path: Deque[Table]):
+    def joins(self, join_path: Deque[Table])-> Join:
+        """
+        joins
+        =====
+
+        arguments:
+            join_path (Deque[Table]): A deque of potentially joinable tables
+
+        returns:
+            Join: A join expression that can be used for futher query composition.
+
+        """
         a = join_path.popleft()
         expression = a
         for b in join_path:
@@ -53,7 +73,46 @@ class QueryComposer():
         return expression
 
 
-    def expression(self, table: str, column: str, aggregation_function: str = "sum")-> Either[Exception, str]:
+    def expression(self, table: str, column: str, aggregation_function: str = "sum")-> Either[str, str]:
+        """
+        expression
+        ==========
+
+        arguments:
+            table (str):                The name of a table to join to
+            column (str):               The name of a column to select from the table.
+            aggregation_function (str): The name of a function to use to aggregate if applicable.
+
+        returns:
+            Either[str, str]
+
+        Computes an SQL expression that joins and selects a desired
+        table.column to the self.level_of_analysis, including the LOAs index
+        columns.
+
+        The expression will aggregate, grouping on the LOA table and applying
+        the aggregation function, if necessary.
+
+        Requires there to be _a_ valid join-path between table and LOA. This
+        means that to join table_a and table_b there _either_ needs to be a
+        relationship like this:
+
+        (one-to-many)
+        ┌───────┐     ┌───────┐     ┌───────┐
+        │table_a│─fk─►│table_b│─fk─►│table_c│
+        └───────┘     └───────┘     └───────┘
+
+        Or a relationship like this:
+
+        (aggregates, many-to-one)
+        ┌───────┐     ┌───────┐     ┌───────┐
+        │table_a│◄─fk─│table_b│◄─fk─│table_c│
+        └───────┘     └───────┘     └───────┘
+
+        Across any number of intermediate tables.
+
+        """
+
         to_select = (self._column(table,column)
                 .maybe(Left(f"Column {table}.{column} doesn't exist"), Right)
                 .then(lambda c: c.label(c.name)))
@@ -70,26 +129,49 @@ class QueryComposer():
                 (Maybe.apply(curry(path, False)).to_arguments(Just(self.network), *tables).join(), True),
                 lambda x: (Just(x), False))
 
-        if aggregates:
-            selection_function = curry(aggregate, aggregation_function, self.loa_table.value)
-        else:
-            selection_function = lambda to_select, select_from: select_from.add_columns(to_select)
-
         joins = (join_path.maybe(Left("Failed to find path"), Right)
             .then(self.joins))
 
         select_from = (Either.apply(curry(lambda idx_col, joins: sql.select(*idx_col).select_from(joins)))
             .to_arguments(index_columns, joins))
 
+        if aggregates:
+            selection_function = curry(aggregate, aggregation_function, self.loa_table.value)
+        else:
+            selection_function = lambda to_select, select_from: select_from.add_columns(to_select)
+
         return Either.apply(curry(selection_function)).to_arguments(to_select, select_from).then(str)
 
     def _table(self, name)-> Maybe[Table]:
+        """
+        _table
+        ======
+
+        arguments:
+            name (str): name of the table to get
+
+        returns:
+            Maybe[Table]: table, if present.
+
+        """
         try:
             return Just(self._tables[name])
         except KeyError:
             return Nothing
 
     def _column(self, table, column)-> Maybe[Column]:
+        """
+        _column
+        ======
+
+        arguments:
+            table (str):  name of the table to get
+            column (str): name of the column to get
+
+        returns:
+            Maybe[Column]: column, if table and column are present.
+
+        """
         def get_key(lookup, key):
             try:
                 return Just(lookup[key])
@@ -109,3 +191,53 @@ class QueryComposer():
             return Just((time.value, unit.value))
         else:
             return Nothing
+
+def path(forwards: bool, network: DiGraph, a: T, b: T)-> Maybe[Deque[T]]:
+    """
+    path
+    ====
+
+    arguments:
+        forwards (bool):               Find path with or against direction in network.
+        network (networkx.Digraph[T]): A network of nodes of type T to find a path in
+        a (T):                         A node in the network
+        b (T):                         A node in the network
+
+    returns:
+        Maybe[Deque[T]]: A deque of steps from a to b
+
+    """
+
+    if forwards:
+        x,y = a,b
+        post = lambda x:x
+    else:
+        x,y = b,a
+        post = reversed
+
+    try:
+        return Just(deque(post(shortest_path(network, x, y))))
+    except NetworkXNoPath:
+        logger.debug(f"No path between {a} and {b} in {network}! ({'forwards' if forwards else 'backwards'})")
+        return Nothing
+
+def aggregate(aggregation_function: str, aggregate_to: Table, column: Column, select: Select)-> Select:
+    """
+    aggregate
+    =========
+
+    arguments:
+        aggregation_function (str): Name of agg. fn
+        aggregate_to (Table):       Table to aggregate to
+        column (Column):            Column to aggregate
+        select (Select):            Select statement to mutate
+
+    returns:
+        Select: Select statement with added select of aggregated column.
+
+    Adds selection of an aggregated column to a select statement.
+
+    """
+
+    aggregation_function = getattr(sql.func, aggregation_function)
+    return select.add_columns(aggregation_function(column)).group_by(*set(aggregate_to.primary_key))
