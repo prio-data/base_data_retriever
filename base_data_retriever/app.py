@@ -15,9 +15,10 @@ from fastapi import Depends, Response
 import fastapi
 import pandas as pd
 import views_schema as schema
+import views_query_planning
 
 from base_data_retriever import __version__
-from . import settings, db, models, querying
+from . import settings, db, models
 
 try:
     logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -80,11 +81,11 @@ async def with_loa_model(loa_name: str, session: Session = Depends(with_loa_db_s
     yield loa
 
 
-async def with_query_composer(loa: models.LevelOfAnalysis = Depends(with_loa_model))-> Optional[querying.QueryComposer]:
+async def with_query_composer(loa: models.LevelOfAnalysis = Depends(with_loa_model))-> Optional[views_query_planning.QueryComposer]:
     if loa is None:
         yield loa
     else:
-        yield querying.QueryComposer(base_dblayer.join_network, loa)
+        yield views_query_planning.QueryComposer(base_dblayer.join_network, loa.name, loa.time_index, loa.unit_index)
 
 app = fastapi.FastAPI()
 
@@ -92,7 +93,7 @@ app = fastapi.FastAPI()
 def get_variable_value(
         variable: str,
         aggregation_function: str,
-        composer: Optional[querying.QueryComposer] = Depends(with_query_composer),
+        composer: Optional[views_query_planning.QueryComposer] = Depends(with_query_composer),
         database_connection = Depends(with_base_db_connection),
         )-> Response:
 
