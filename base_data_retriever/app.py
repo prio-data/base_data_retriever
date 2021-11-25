@@ -3,6 +3,8 @@ app
 ===
 
 Internal API for getting data from the DB with a simple, clear interface.
+
+Querying logic is defined in the views_query_planning library.
 """
 from typing import Optional
 import io
@@ -14,10 +16,10 @@ from environs import EnvError
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
-import views_schema as schema
+
+import views_schema
 import views_query_planning
 
-from base_data_retriever import __version__
 from . import settings, db, models
 
 try:
@@ -65,9 +67,9 @@ async def with_loa_model(loa_name: str, session: Session = Depends(with_loa_db_s
     loa = session.query(models.LevelOfAnalysis).get(loa_name)
 
     if loa is None:
-        if loa_name in settings.DEFAULT_LOAS:
+        if loa_name in views_schema.DEFAULT_LEVELS_OF_ANALYSIS:
             logger.info(f"LOA {loa_name} defined from defaults.")
-            time_index, unit_index = settings.DEFAULT_LOAS[loa_name]["index_columns"]
+            time_index, unit_index = views_schema.DEFAULT_LEVELS_OF_ANALYSIS[loa_name]["index_columns"]
             loa = models.LevelOfAnalysis(
                     name = loa_name,
                     time_index = time_index,
@@ -122,15 +124,20 @@ def get_variable_value(
     query = composer.expression(table, column, aggregation_function)
     return query.either(error_response, data_response)
 
-@app.get("/loa/")
-def list_levels_of_analysis(session = Depends(loa_dblayer.session_dependency)):
-    loas = [mdl.pydantic() for mdl in session.query(models.LevelOfAnalysis).all()]
-    return {"levels_of_analysis": loas}
-
 @app.post("/loa/")
-def define_level_of_analysis(session = Depends(loa_dblayer.session_dependency)):
-    session
-    pass
+def define_level_of_analysis(
+        level_of_analysis: views_schema.LevelOfAnalysis,
+        session = Depends(loa_dblayer.session_dependency)):
+    mdl = models.LevelOfAnalysis.from_pydantic(level_of_analysis)
+    session.add(mdl)
+    session.commit()
+    return Response(status_code = 204)
+
+@app.get("/loa/")
+def list_levels_of_analysis(
+        session = Depends(loa_dblayer.session_dependency)
+        )-> views_schema.ListView[views_schema.LevelOfAnalysis]:
+    return {"data": [mdl.pydantic() for mdl in session.query(models.LevelOfAnalysis).all()]}
 
 @app.get("/loa/{name:str}/")
 def level_of_analysis_detail(name: str, session = Depends(loa_dblayer.session_dependency)):
@@ -143,26 +150,26 @@ def level_of_analysis_detail(name: str, session = Depends(loa_dblayer.session_de
 @app.get("/")
 def handshake():
     return {
-        "version": __version__
+        "name": "base_data_retriever",
         }
 
 @app.get("/tables")
-def list_tables()-> schema.DocumentationEntry:
+def list_tables()-> views_schema.DocumentationEntry:
     table_names = [tbl.name for tbl in base_dblayer.tables.values()]
-    tables = [schema.DocumentationEntry(name=n, path=n) for n in table_names]
+    tables = [views_schema.DocumentationEntry(name=n, path=n) for n in table_names]
     return {
         "name": "tables",
         "entries": tables
         }
 
 @app.get("/tables/{table_name}")
-def show_table(table_name: str)-> schema.DocumentationEntry:
+def show_table(table_name: str)-> views_schema.DocumentationEntry:
     table = [table for table in base_dblayer.tables.values() if table.name == table_name]
 
     if table:
         table,*_ = table
         column_names = [column.name for column in table.columns]
-        columns = [schema.DocumentationEntry(name = n, path = n) for n in column_names]
+        columns = [views_schema.DocumentationEntry(name = n, path = n) for n in column_names]
         return {
             "name": table_name,
             "entries": columns
@@ -171,7 +178,7 @@ def show_table(table_name: str)-> schema.DocumentationEntry:
         return Response(status_code = 404)
 
 @app.get("/tables/{table_name}/{column_name}")
-def show_column(table_name: str, column_name: str)-> schema.DocumentationEntry:
+def show_column(table_name: str, column_name: str)-> views_schema.DocumentationEntry:
     table = [table for table in base_dblayer.tables.values() if table.name == table_name]
     if table and (column := [column for column in table[0].columns if column.name == column_name]):
         column,*_ = column
