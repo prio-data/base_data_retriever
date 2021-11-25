@@ -1,13 +1,14 @@
 """
-Required settings:
-* Config:
-    - DB_HOST
-    - DB_PORT
-    - DB_NAME
-    - DB_USER
-    - DB_SCHEMA
-"""
+settings
+========
 
+These are the required environment settings that the service needs to operate.
+Most have defaults that may or may not be helpful.
+
+The LOA database is by default defined to be the same as the base DB, but it is
+useful to use a separate database for storing LOAs since the LOA database
+schema is managed by Alembic.
+"""
 from typing import Optional
 import environs
 
