@@ -6,7 +6,7 @@ Internal API for getting data from the DB with a simple, clear interface.
 
 Querying logic is defined in the views_query_planning library.
 """
-from typing import Optional
+from typing import Optional, Tuple
 import io
 import logging
 
@@ -16,6 +16,9 @@ from environs import EnvError
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
+from pymonad.either import Either, Left, Right
+from toolz.functoolz import curry
+from sqlalchemy.exc import SQLAlchemyError
 
 import views_schema
 import views_query_planning
@@ -99,13 +102,27 @@ def get_variable_value(
         database_connection = Depends(with_base_db_connection),
         )-> Response:
 
+    def dataframe_from_query(query: str, index_columns: Tuple[str])-> Either[str, pd.DataFrame]:
+        try:
+            logger.debug("Executing %s",str(query))
+            dataframe = pd.read_sql_query(query, database_connection)
+            dataframe.set_index(index_columns, inplace = True)
+            logger.info(f"Got {dataframe.shape[0]} rows")
+        except SQLAlchemyError as e:
+            return Left(f"Failed to read dataframe from database: {str(e)}")
+        except KeyError:
+            return Left(
+                    "Dataframe did not contain index columns: "
+                    "Wanted {str(index_columns)}, but got"
+                    "but got {str(dataframe.columns)}"
+                    )
+        else:
+            return Right(dataframe)
+
     def error_response(message: str):
         return Response(message, status_code = 400)
 
-    def data_response(query: str):
-        logger.debug("Executing %s",str(query))
-        dataframe = pd.read_sql_query(query, database_connection)
-        logger.info(f"Got {dataframe.shape[0]} rows")
+    def data_response(dataframe: pd.DataFrame):
         bytes_buffer = io.BytesIO()
         dataframe.to_parquet(bytes_buffer)
         return Response(bytes_buffer.getvalue(), media_type="application/octet-stream")
@@ -122,7 +139,15 @@ def get_variable_value(
                 status_code=400)
 
     query = composer.expression(table, column, aggregation_function)
-    return query.either(error_response, data_response)
+    index_columns = (composer
+            .index_columns.then(lambda cs: [c.name for c in cs])
+            .maybe(Left("Index columns for LOA not found"), Right))
+
+    return (Either
+            .apply(curry(dataframe_from_query))
+            .to_arguments(query, index_columns)
+            .join()
+            .either(error_response, data_response))
 
 @app.post("/loa/")
 def define_level_of_analysis(
