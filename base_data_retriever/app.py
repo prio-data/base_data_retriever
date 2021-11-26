@@ -12,13 +12,13 @@ import logging
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from environs import EnvError
 from fastapi import Depends, Response
 import fastapi
 import pandas as pd
 from pymonad.either import Either, Left, Right
 from toolz.functoolz import curry
-from sqlalchemy.exc import SQLAlchemyError
 
 import views_schema
 import views_query_planning
