@@ -1,6 +1,5 @@
 FROM prioreg.azurecr.io/prio-data/uvicorn_deployment:2.0.0
 
-USER gunicorn
 COPY ./requirements.txt /
 RUN pip install -r requirements.txt 
 
