@@ -31,4 +31,6 @@ LOA_DB_PASSWORD: Optional[str]  = env.str("BASE_DATA_RETRIEVER_LOA_DB_PASSWORD",
 LOA_DB_SCHEMA                   = env.str("BASE_DATA_RETRIEVER_LOA_DB_SCHEMA","public")
 LOA_DB_SSLMODE                  = env.str("BASE_DATA_RETRIEVER_LOA_DB_SSLMODE",BASE_DB_SSLMODE)
 
+OUTER_JOINS                     = env.bool("BASE_DATA_RETRIEVER_OUTER_JOINS", False)
+
 LOG_LEVEL                       = env.str("LOG_LEVEL", "WARNING")

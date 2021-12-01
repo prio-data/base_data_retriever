@@ -90,7 +90,12 @@ async def with_query_composer(loa: models.LevelOfAnalysis = Depends(with_loa_mod
     if loa is None:
         yield loa
     else:
-        yield views_query_planning.QueryComposer(base_dblayer.join_network, loa.name, loa.time_index, loa.unit_index)
+        yield views_query_planning.QueryComposer(
+                base_dblayer.join_network,
+                loa.name,
+                loa.time_index,
+                loa.unit_index,
+                outer = settings.OUTER_JOINS)
 
 app = fastapi.FastAPI()
 

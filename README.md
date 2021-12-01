@@ -8,10 +8,15 @@ two data formats.
 It does so by reflecting the relational structure of the database to figure out
 how to join tables, in order to produce the desired output format.
 
+Choose the kind of join via the `OUTER_JOINS` setting. Setting this to `True`
+ensures that only outer joins are used, which means that all time-unit
+combinations at the desired level of analysis are returned.
+
 ## Env settings
 
 | Key                                  | Description                                                    | Default                         |
 |--------------------------------------|----------------------------------------------------------------|---------------------------------|
+| BASE_DATA_RETRIEVER_OUTER_JOINS      | Should joins from the LOA be outer left joins?                 | False (use inner joins)         |
 | BASE_DATA_RETRIEVER_DB_HOST          | Hostname of database containing data to retrieve               | 127.0.0.1                       |
 | BASE_DATA_RETRIEVER_DB_PORT          | Port of -"-                                                    | 5432                            |
 | BASE_DATA_RETRIEVER_DB_USER          | Username for -"-                                               | postgres                        |
