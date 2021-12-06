@@ -34,3 +34,6 @@ LOA_DB_SSLMODE                  = env.str("BASE_DATA_RETRIEVER_LOA_DB_SSLMODE",B
 OUTER_JOINS                     = env.bool("BASE_DATA_RETRIEVER_OUTER_JOINS", False)
 
 LOG_LEVEL                       = env.str("LOG_LEVEL", "WARNING")
+
+DB_CON_POOL_SIZE                = env.int("BASE_DATA_RETRIEVER_DB_CON_POOL_SIZE", 20)
+DB_CON_MAX_OVERFLOW             = env.int("BASE_DATA_RETRIEVER_DB_CON_MAX_OVERFLOW", 0)

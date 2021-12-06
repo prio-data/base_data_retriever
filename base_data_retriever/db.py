@@ -25,7 +25,9 @@ class DatabaseLayer():
             sslmode: str,
             schema: str = "public",
             password: Optional[str] = None,
-            metadata: Optional[sqlalchemy.MetaData] = None):
+            metadata: Optional[sqlalchemy.MetaData] = None,
+            pool_size: int = 20,
+            max_overflow: int = 0):
 
         self.host     = host
         self.port     = port
@@ -36,7 +38,11 @@ class DatabaseLayer():
         self.schema = schema
 
 
-        self._engine  = sqlalchemy.create_engine("postgresql+psycopg2://", creator = self._creator_factory())
+        self._engine  = sqlalchemy.create_engine(
+                "postgresql+psycopg2://", 
+                creator = self._creator_factory(),
+                pool_size = pool_size,
+                max_overflow = max_overflow)
 
         self._metadata = metadata
 

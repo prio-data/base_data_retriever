@@ -33,23 +33,27 @@ except EnvError:
 logger = logging.getLogger(__name__)
 
 base_dblayer = db.BaseDatabaseLayer(
-            host     = settings.BASE_DB_HOST,
-            port     = settings.BASE_DB_PORT,
-            user     = settings.BASE_DB_USER,
-            name     = settings.BASE_DB_NAME,
-            sslmode  = settings.BASE_DB_SSLMODE,
-            password = settings.BASE_DB_PASSWORD,
-            schema   = settings.BASE_DB_SCHEMA
+            host         = settings.BASE_DB_HOST,
+            port         = settings.BASE_DB_PORT,
+            user         = settings.BASE_DB_USER,
+            name         = settings.BASE_DB_NAME,
+            sslmode      = settings.BASE_DB_SSLMODE,
+            password     = settings.BASE_DB_PASSWORD,
+            schema       = settings.BASE_DB_SCHEMA,
+            pool_size    = settings.DB_CON_POOL_SIZE,
+            max_overflow = settings.DB_CON_MAX_OVERFLOW,
         )
 
 loa_dblayer = db.DatabaseLayer(
-            host     = settings.LOA_DB_HOST,
-            port     = settings.LOA_DB_PORT,
-            user     = settings.LOA_DB_USER,
-            name     = settings.LOA_DB_NAME,
-            sslmode  = settings.LOA_DB_SSLMODE,
-            password = settings.LOA_DB_PASSWORD,
-            metadata = models.Base.metadata
+            host         = settings.LOA_DB_HOST,
+            port         = settings.LOA_DB_PORT,
+            user         = settings.LOA_DB_USER,
+            name         = settings.LOA_DB_NAME,
+            sslmode      = settings.LOA_DB_SSLMODE,
+            password     = settings.LOA_DB_PASSWORD,
+            metadata     = models.Base.metadata,
+            pool_size    = settings.DB_CON_POOL_SIZE,
+            max_overflow = settings.DB_CON_MAX_OVERFLOW,
         )
 
 async def with_loa_db_session()-> Session:
