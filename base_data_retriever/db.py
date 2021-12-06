@@ -39,7 +39,7 @@ class DatabaseLayer():
 
 
         self._engine  = sqlalchemy.create_engine(
-                "postgresql+psycopg2://", 
+                "postgresql+psycopg2://",
                 creator = self._creator_factory(),
                 pool_size = pool_size,
                 max_overflow = max_overflow)

@@ -87,6 +87,8 @@ async def with_loa_model(loa_name: str, session: Session = Depends(with_loa_db_s
         else:
             logger.warning(f"LOA {loa_name} requested, but not found")
 
+    session.close()
+
     yield loa
 
 
@@ -115,6 +117,8 @@ def get_variable_value(
         try:
             logger.debug("Executing %s",str(query))
             dataframe = pd.read_sql_query(query, database_connection)
+            database_connection.close()
+
             dataframe.set_index(index_columns, inplace = True)
             logger.info(f"Got {dataframe.shape[0]} rows")
         except SQLAlchemyError as e:
