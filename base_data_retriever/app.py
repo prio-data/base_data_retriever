@@ -120,6 +120,9 @@ def get_variable_value(
             database_connection.close()
 
             dataframe.set_index(index_columns, inplace = True)
+            
+            dataframe.sort_index(inplace = True)
+            
             logger.info(f"Got {dataframe.shape[0]} rows")
         except SQLAlchemyError as e:
             return Left(f"Failed to read dataframe from database: {str(e)}")
